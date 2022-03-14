@@ -16,11 +16,11 @@ def main():
     global best_acc
     global best_acc_val
 
-    if args.local_rank == -1:
+    if args.local_rank == -1:     # 单卡
         device = torch.device('cuda', args.gpu_id)
         args.world_size = 1
         args.n_gpu = torch.cuda.device_count()
-    else:
+    else:        # 多卡
         torch.cuda.set_device(args.local_rank)
         device = torch.device('cuda', args.local_rank)
         torch.distributed.init_process_group(backend='nccl')
@@ -43,13 +43,13 @@ def main():
     if args.local_rank in [-1, 0]:
         os.makedirs(args.out, exist_ok=True)
         args.writer = SummaryWriter(args.out)
-    set_model_config(args)
+    set_model_config(args)      # 根据数据集，设置模型参数
 
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()
 
     labeled_trainloader, unlabeled_dataset, test_loader, val_loader, ood_loaders \
-        = set_dataset(args)
+        = set_dataset(args)     # 加载数据
 
     model, optimizer, scheduler = set_models(args)
     logger.info("Total params: {:.2f}M".format(
@@ -57,7 +57,7 @@ def main():
 
     if args.use_ema:
         from models.ema import ModelEMA
-        ema_model = ModelEMA(args, model, args.ema_decay)
+        ema_model = ModelEMA(args, model, args.ema_decay)    # 对模型进行权重指数移动平均，增加模型鲁棒性
     args.start_epoch = 0
     if args.resume:
         logger.info("==> Resuming from checkpoint..")
@@ -76,7 +76,7 @@ def main():
     if args.amp:
         from apex import amp
         model, optimizer = amp.initialize(
-            model, optimizer, opt_level=args.opt_level)
+            model, optimizer, opt_level=args.opt_level)    # AMP 自动混合精度 加快训练速度
 
     if args.local_rank != -1:
         model = torch.nn.parallel.DistributedDataParallel(
@@ -85,7 +85,7 @@ def main():
 
 
     model.zero_grad()
-    if not args.eval_only:
+    if not args.eval_only:     # 训练
         logger.info("***** Running training *****")
         logger.info(f"  Task = {args.dataset}@{args.num_labeled}")
         logger.info(f"  Num Epochs = {args.epochs}")
@@ -94,7 +94,7 @@ def main():
         logger.info(f"  Total optimization steps = {args.total_steps}")
         train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
               ood_loaders, model, optimizer, ema_model, scheduler)
-    else:
+    else:               # 评测
         logger.info("***** Running Evaluation *****")
         logger.info(f"  Task = {args.dataset}@{args.num_labeled}")
         eval_model(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
