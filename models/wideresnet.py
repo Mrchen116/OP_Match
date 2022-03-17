@@ -144,11 +144,11 @@ class WideResNet_Open(nn.Module):
                 nn.ReLU(),
                 nn.Linear(128, 128),
         )
-        self.fc = nn.Linear(channels[3], num_classes)
+        self.fc = nn.Linear(channels[3], num_classes)       # 多类分类器
         out_open = 2 * num_classes
-        self.fc_open = nn.Linear(channels[3], out_open, bias=False)
+        self.fc_open = nn.Linear(channels[3], out_open, bias=False)   # OVA 异常检测
         self.channels = channels[3]
-
+        # 初始化参数
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight,

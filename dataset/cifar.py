@@ -60,12 +60,12 @@ def get_cifar(args, norm=True):
         base_dataset.targets -= 2
         base_dataset.targets[np.where(base_dataset.targets == -2)[0]] = 8
         base_dataset.targets[np.where(base_dataset.targets == -1)[0]] = 9
-
+    # 按照args对每类中的labeled unlabel val给所有类的数据划分
     train_labeled_idxs, train_unlabeled_idxs, val_idxs = \
         x_u_split(args, base_dataset.targets)
 
     ## This function will be overwritten in trainer.py
-    norm_func = TransformFixMatch(mean=mean, std=std, norm=norm)
+    norm_func = TransformFixMatch(mean=mean, std=std, norm=norm)    # 翻转随机剪切 fixmatch强增强 翻转
     if norm:
         norm_func_test = transforms.Compose([
             transforms.ToTensor(),
@@ -75,17 +75,17 @@ def get_cifar(args, norm=True):
         norm_func_test = transforms.Compose([
             transforms.ToTensor(),
         ])
-
+    # 从数据集中提取出3类数据，得到新数据集
     if name == 'cifar10':
         train_labeled_dataset = data_folder_main(
             root, train_labeled_idxs, train=True,
-            transform=norm_func)
+            transform=norm_func)    # 翻转随机剪切 fixmatch强增强 翻转
         train_unlabeled_dataset = data_folder_main(
             root, train_unlabeled_idxs, train=True,
-            transform=norm_func, return_idx=False)
+            transform=norm_func, return_idx=False)  # 翻转随机剪切 fixmatch强增强 翻转
         val_dataset = data_folder_main(
             root, val_idxs, train=True,
-            transform=norm_func_test)
+            transform=norm_func_test)    # val集合不进行transform
     elif name == 'cifar100':
         train_labeled_dataset = data_folder_main(
             root, train_labeled_idxs, num_super = num_super, train=True,
@@ -102,10 +102,10 @@ def get_cifar(args, norm=True):
         train_unlabeled_dataset.targets -= 2
         val_dataset.targets -= 2
 
-
+    # 加载test集
     if name == 'cifar10':
         test_dataset = data_folder(
-            root, train=False, transform=norm_func_test, download=False)
+            root, train=False, transform=norm_func_test, download=False)  # test集合不进行transform
     elif name == 'cifar100':
         test_dataset = data_folder(
             root, train=False, transform=norm_func_test,
@@ -116,7 +116,7 @@ def get_cifar(args, norm=True):
         test_dataset.targets -= 2
         test_dataset.targets[np.where(test_dataset.targets == -2)[0]] = 8
         test_dataset.targets[np.where(test_dataset.targets == -1)[0]] = 9
-
+    # 多余的类变成未知类 用于训练的集合未知类呢？
     target_ind = np.where(test_dataset.targets >= args.num_classes)[0]
     test_dataset.targets[target_ind] = args.num_classes
 
@@ -168,9 +168,9 @@ def x_u_split(args, labels):
     unlabeled_idx = []
     # unlabeled data: all data (https://github.com/kekmodel/FixMatch-pytorch/issues/10)
     for i in range(args.num_classes):
-        idx = np.where(labels == i)[0]
-        unlabeled_idx.extend(idx)
-        idx = np.random.choice(idx, label_per_class+val_per_class, False)
+        idx = np.where(labels == i)[0]  # 找到所有label为i的下标
+        unlabeled_idx.extend(idx)       # 把所有数据都作为无标签数据
+        idx = np.random.choice(idx, label_per_class+val_per_class, False)   # 随机取出标签数据和val数据
         labeled_idx.extend(idx[:label_per_class])
         val_idx.extend(idx[label_per_class:])
 
@@ -186,7 +186,7 @@ def x_u_split(args, labels):
     #if not args.no_out:
     unlabeled_idx = np.array(range(len(labels)))
     unlabeled_idx = [idx for idx in unlabeled_idx if idx not in labeled_idx]
-    unlabeled_idx = [idx for idx in unlabeled_idx if idx not in val_idx]
+    unlabeled_idx = [idx for idx in unlabeled_idx if idx not in val_idx]    # 排除掉所有label和val的数据作为unlabel
     return labeled_idx, unlabeled_idx, val_idx
 
 
@@ -214,17 +214,17 @@ class TransformFixMatch(object):
         weak = self.weak(x)
         strong = self.strong(x)
         if self.norm:
-            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak2(x))
+            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak2(x))  # 翻转随机剪切 fixmatch强增强 翻转
         else:
             return weak, strong
 
 class TransformOpenMatch(object):
     def __init__(self, mean, std, norm=True, size_image=32):
         self.weak = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(),        # p=0.5的概率水平翻转
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
-                                  padding_mode='reflect')])
+                                  padding_mode='reflect')])  # 填充后，随机裁剪
         self.weak2 = transforms.Compose([
             transforms.RandomHorizontalFlip(),])
         self.normalize = transforms.Compose([
@@ -237,9 +237,9 @@ class TransformOpenMatch(object):
         strong = self.weak(x)
 
         if self.norm:
-            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak2(x))
+            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak2(x))  # 2*随机水平翻转+裁剪，1*随机水平翻转
         else:
-            return weak, strong
+            return weak, strong   # 都是随机水平翻转+裁剪
 
 
 
@@ -292,14 +292,14 @@ class TransformFixMatch_Imagenet_Weak(object):
             transforms.Scale((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.CenterCrop(size=size_image),
-        ])
+        ])      # 随机水平翻转 放大再中心裁剪
         self.strong = transforms.Compose([
             transforms.Scale((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
                                   padding_mode='reflect'),
-            RandAugmentMC(n=2, m=10)])
+            RandAugmentMC(n=2, m=10)])      # 随机水平翻转 放大再随机裁剪
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)])
@@ -310,7 +310,7 @@ class TransformFixMatch_Imagenet_Weak(object):
         weak2 = self.weak2(x)
         strong = self.strong(x)
         if self.norm:
-            return self.normalize(weak), self.normalize(strong), self.normalize(weak2)
+            return self.normalize(weak), self.normalize(strong), self.normalize(weak2)  # 翻转中心裁剪 翻转随机裁剪 翻转中心裁剪
         else:
             return weak, strong
 

@@ -47,7 +47,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                   "LR: {lr:.6f}. " \
                   "Lab: {loss_x:.4f}. " \
                   "Open: {loss_o:.4f}"
-    output_args = vars(args)
+    output_args = vars(args)    # vars得到属性名和属性值的字典
     default_out += " OEM  {loss_oem:.4f}"
     default_out += " SOCR  {loss_socr:.4f}"
     default_out += " Fix  {loss_fix:.4f}"
@@ -57,7 +57,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
     if args.dataset == 'cifar10':
         mean = cifar10_mean
         std = cifar10_std
-        func_trans = TransformOpenMatch
+        func_trans = TransformOpenMatch     # 2*随机水平翻转+裁剪，1*随机水平翻转
     elif args.dataset == 'cifar100':
         mean = cifar100_mean
         std = cifar100_std
@@ -65,12 +65,12 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
     elif 'imagenet' in args.dataset:
         mean = normal_mean
         std = normal_std
-        func_trans = TransformFixMatch_Imagenet_Weak
+        func_trans = TransformFixMatch_Imagenet_Weak  # 翻转中心裁剪 翻转随机裁剪 翻转中心裁剪
 
 
-    unlabeled_dataset_all.transform = func_trans(mean=mean, std=std)
+    unlabeled_dataset_all.transform = func_trans(mean=mean, std=std)   # unlabeled_dataset_all 比 unlabeled_dataset 增强弱一点
     labeled_dataset = copy.deepcopy(labeled_trainloader.dataset)
-    labeled_dataset.transform = func_trans(mean=mean, std=std)
+    labeled_dataset.transform = func_trans(mean=mean, std=std)          # 使用更弱的增强
     train_sampler = RandomSampler if args.local_rank == -1 else DistributedSampler
     labeled_trainloader = DataLoader(
         labeled_dataset,
@@ -91,7 +91,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             ## pick pseudo-inliers
             exclude_dataset(args, unlabeled_dataset, ema_model.ema)
 
-
+        # 两者区别就是增强不同
         unlabeled_trainloader = DataLoader(unlabeled_dataset,
                                            sampler = train_sampler(unlabeled_dataset),
                                            batch_size = args.batch_size * args.mu,
@@ -105,12 +105,12 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
         unlabeled_iter = iter(unlabeled_trainloader)
         unlabeled_all_iter = iter(unlabeled_trainloader_all)
-
+        # epoch 不是按照过一遍数据算，是按给定的eval_step
         for batch_idx in range(args.eval_step):
             ## Data loading
 
             try:
-                (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()
+                (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()      # 水平翻转随机裁剪，水平翻转
             except:
                 if args.world_size > 1:
                     labeled_epoch += 1
@@ -118,7 +118,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 labeled_iter = iter(labeled_trainloader)
                 (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()
             try:
-                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
+                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()          # 水平翻转随机裁剪 fixmatch强增强
             except:
                 if args.world_size > 1:
                     unlabeled_epoch += 1
@@ -126,7 +126,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 unlabeled_iter = iter(unlabeled_trainloader)
                 (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
             try:
-                (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()
+                (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()  # 水平翻转随机裁剪 水平翻转随机裁剪
             except:
                 unlabeled_all_iter = iter(unlabeled_trainloader_all)
                 (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()
@@ -134,10 +134,10 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
             b_size = inputs_x.shape[0]
 
-            inputs_all = torch.cat([inputs_all_w, inputs_all_s], 0)
-            inputs = torch.cat([inputs_x, inputs_x_s,
-                                inputs_all], 0).to(args.device)
-            targets_x = targets_x.to(args.device)
+            inputs_all = torch.cat([inputs_all_w, inputs_all_s], 0)    # unlabeled 水平翻转随机裁剪 * 2
+            inputs = torch.cat([inputs_x, inputs_x_s,                  # labeled 水平翻转 水平翻转随机裁剪
+                                inputs_all], 0).to(args.device)        # 相当于batch_size*4放到一个batch中
+            targets_x = targets_x.to(args.device)       # labeled的类别
             ## Feed data
             logits, logits_open = model(inputs)
             logits_open_u1, logits_open_u2 = logits_open[2*b_size:].chunk(2)
