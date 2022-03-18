@@ -56,11 +56,11 @@ def get_cifar(args, norm=True):
         args.num_classes = base_dataset.num_known_class
 
     base_dataset.targets = np.array(base_dataset.targets)
-    if name == 'cifar10':
+    if name == 'cifar10':       # 用于训练的集 调一下顺序？
         base_dataset.targets -= 2
         base_dataset.targets[np.where(base_dataset.targets == -2)[0]] = 8
         base_dataset.targets[np.where(base_dataset.targets == -1)[0]] = 9
-    # 按照args对每类中的labeled unlabel val给所有类的数据划分
+    # 按照args对每类中的labeled unlabel val给所有类的数据划分，labeled和val数据都不包含异常类，异常类都放进了unlabeled中
     train_labeled_idxs, train_unlabeled_idxs, val_idxs = \
         x_u_split(args, base_dataset.targets)
 
@@ -116,7 +116,7 @@ def get_cifar(args, norm=True):
         test_dataset.targets -= 2
         test_dataset.targets[np.where(test_dataset.targets == -2)[0]] = 8
         test_dataset.targets[np.where(test_dataset.targets == -1)[0]] = 9
-    # 多余的类变成未知类 用于训练的集合未知类呢？
+    # 多余的类变成未知类
     target_ind = np.where(test_dataset.targets >= args.num_classes)[0]
     test_dataset.targets[target_ind] = args.num_classes
 
@@ -169,7 +169,7 @@ def x_u_split(args, labels):
     # unlabeled data: all data (https://github.com/kekmodel/FixMatch-pytorch/issues/10)
     for i in range(args.num_classes):
         idx = np.where(labels == i)[0]  # 找到所有label为i的下标
-        unlabeled_idx.extend(idx)       # 把所有数据都作为无标签数据
+        unlabeled_idx.extend(idx)       # 无用代码
         idx = np.random.choice(idx, label_per_class+val_per_class, False)   # 随机取出标签数据和val数据
         labeled_idx.extend(idx[:label_per_class])
         val_idx.extend(idx[label_per_class:])
@@ -184,7 +184,7 @@ def x_u_split(args, labels):
     np.random.shuffle(labeled_idx)
 
     #if not args.no_out:
-    unlabeled_idx = np.array(range(len(labels)))
+    unlabeled_idx = np.array(range(len(labels)))    # 把所有数据都作为无标签数据，包括异常类
     unlabeled_idx = [idx for idx in unlabeled_idx if idx not in labeled_idx]
     unlabeled_idx = [idx for idx in unlabeled_idx if idx not in val_idx]    # 排除掉所有label和val的数据作为unlabel
     return labeled_idx, unlabeled_idx, val_idx

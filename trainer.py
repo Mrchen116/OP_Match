@@ -136,15 +136,15 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
             inputs_all = torch.cat([inputs_all_w, inputs_all_s], 0)    # unlabeled 水平翻转随机裁剪 * 2
             inputs = torch.cat([inputs_x, inputs_x_s,                  # labeled 水平翻转 水平翻转随机裁剪
-                                inputs_all], 0).to(args.device)        # 相当于batch_size*4放到一个batch中
+                                inputs_all], 0).to(args.device)        # 相当于b_size*2 + b_size*mu*2放到一个batch中
             targets_x = targets_x.to(args.device)       # labeled的类别
             ## Feed data
             logits, logits_open = model(inputs)
-            logits_open_u1, logits_open_u2 = logits_open[2*b_size:].chunk(2)
+            logits_open_u1, logits_open_u2 = logits_open[2*b_size:].chunk(2)   # 取出unlabeled的两个增强的的ova输出
 
             ## Loss for labeled samples
             Lx = F.cross_entropy(logits[:2*b_size],
-                                      targets_x.repeat(2), reduction='mean')
+                                      targets_x.repeat(2), reduction='mean')   # 有标签数据做CEloss 注意：targets包含<0的未知类标签
             Lo = ova_loss(logits_open[:2*b_size], targets_x.repeat(2))
 
             ## Open-set entropy minimization
