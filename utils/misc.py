@@ -87,9 +87,9 @@ def compute_roc(unk_all, label_all, num_known):
 
 
 def roc_id_ood(score_id, score_ood):
-    id_all = np.r_[score_id, score_ood]
+    id_all = np.r_[score_id, score_ood]     # 拼接
     Y_test = np.zeros(score_id.shape[0]+score_ood.shape[0])
-    Y_test[score_id.shape[0]:] = 1
+    Y_test[score_id.shape[0]:] = 1          # 目标是ood数据集则为1的二分类标签
     return roc_auc_score(Y_test, id_all)
 
 
@@ -98,18 +98,18 @@ def ova_loss(logits_open, label):
     logits_open = F.softmax(logits_open, 1)
     label_s_sp = torch.zeros((logits_open.size(0),
                               logits_open.size(2))).long().to(label.device)
-    label_range = torch.range(0, logits_open.size(0) - 1).long()
-    label_s_sp[label_range, label] = 1
+    label_range = torch.range(0, logits_open.size(0) - 1).long()    # torch.range 左右都是闭区间
+    label_s_sp[label_range, label] = 1      # 正确类标的one-hot
     label_sp_neg = 1 - label_s_sp
     open_loss = torch.mean(torch.sum(-torch.log(logits_open[:, 1, :]
-                                                + 1e-8) * label_s_sp, 1))
+                                                + 1e-8) * label_s_sp, 1))   # (1)中的第一项，与论文相反，1为inlier
     open_loss_neg = torch.mean(torch.max(-torch.log(logits_open[:, 0, :]
-                                                    + 1e-8) * label_sp_neg, 1)[0])
+                                                    + 1e-8) * label_sp_neg, 1)[0])   # (1)中的第二项
     Lo = open_loss_neg + open_loss
     return Lo
 
 
-def ova_ent(logits_open):
+def ova_ent(logits_open):       # 自身的熵
     logits_open = logits_open.view(logits_open.size(0), 2, -1)
     logits_open = F.softmax(logits_open, 1)
     Le = torch.mean(torch.mean(torch.sum(-logits_open *
@@ -299,7 +299,7 @@ def test_ood(args, test_id, test_loader, model):
             out_open = F.softmax(outputs_open.view(outputs_open.size(0), 2, -1), 1)
             tmp_range = torch.range(0, out_open.size(0) - 1).long().cuda()
             pred_close = outputs.data.max(1)[1]
-            unk_score = out_open[tmp_range, 0, pred_close]      # ova的p(t=0)输出
+            unk_score = out_open[tmp_range, 0, pred_close]      # ova的p(t=0)输出(一维向量
             batch_time.update(time.time() - end)
             end = time.time()
             if batch_idx == 0:
