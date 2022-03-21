@@ -145,9 +145,9 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             ## Loss for labeled samples
             Lx = F.cross_entropy(logits[:2*b_size],
                                       targets_x.repeat(2), reduction='mean')   # 有标签数据做CEloss 注意：labeled数据都来自已知类
-            Lo = ova_loss(logits_open[:2*b_size], targets_x.repeat(2))
+            Lo = ova_loss(logits_open[:2*b_size], targets_x.repeat(2))         # 式子(1)
 
-            ## Open-set entropy minimization
+            ## Open-set entropy minimization   式子(2)
             L_oem = ova_ent(logits_open_u1) / 2.
             L_oem += ova_ent(logits_open_u2) / 2.
 
@@ -160,16 +160,16 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 logits_open_u1 - logits_open_u2)**2, 1), 1))
 
             if epoch >= args.start_fix:
-                inputs_ws = torch.cat([inputs_u_w, inputs_u_s], 0).to(args.device)
+                inputs_ws = torch.cat([inputs_u_w, inputs_u_s], 0).to(args.device)  # 水平翻转随机裁剪 fixmatch强增强
                 logits, logits_open_fix = model(inputs_ws)
                 logits_u_w, logits_u_s = logits.chunk(2)
-                pseudo_label = torch.softmax(logits_u_w.detach()/args.T, dim=-1)
+                pseudo_label = torch.softmax(logits_u_w.detach()/args.T, dim=-1)    # 用弱增强打伪标签
                 max_probs, targets_u = torch.max(pseudo_label, dim=-1)
-                mask = max_probs.ge(args.threshold).float()
+                mask = max_probs.ge(args.threshold).float()     # 大于阈值的为True
                 L_fix = (F.cross_entropy(logits_u_s,
                                          targets_u,
                                          reduction='none') * mask).mean()
-                mask_probs.update(mask.mean().item())
+                mask_probs.update(mask.mean().item())       # 更新阈值以上的概率
 
             else:
                 L_fix = torch.zeros(1).to(args.device).mean()
@@ -189,11 +189,11 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             losses_fix.update(L_fix.item())
 
             output_args["batch"] = batch_idx
-            output_args["loss_x"] = losses_x.avg
-            output_args["loss_o"] = losses_o.avg
-            output_args["loss_oem"] = losses_oem.avg
-            output_args["loss_socr"] = losses_socr.avg
-            output_args["loss_fix"] = losses_fix.avg
+            output_args["loss_x"] = losses_x.avg        # fixmatch有标签数据的CE loss
+            output_args["loss_o"] = losses_o.avg        # ova 有标签数据，式子(1)
+            output_args["loss_oem"] = losses_oem.avg    # ova 无监督 熵最小化
+            output_args["loss_socr"] = losses_socr.avg  # ova 拉近两个增强得到logit的L2距离
+            output_args["loss_fix"] = losses_fix.avg    # fixmatch打伪标签，弱增强学习
             output_args["lr"] = [group["lr"] for group in optimizer.param_groups][0]
 
 
@@ -220,10 +220,10 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
         if args.local_rank in [-1, 0]:
 
-            val_acc = test(args, val_loader, test_model, epoch, val=True)
+            val_acc = test(args, val_loader, test_model, epoch, val=True)   # 验证集
             test_loss, test_acc_close, test_overall, \
             test_unk, test_roc, test_roc_softm, test_id \
-                = test(args, test_loader, test_model, epoch)
+                = test(args, test_loader, test_model, epoch)                # 测试集
 
             for ood in ood_loaders.keys():
                 roc_ood = test_ood(args, test_id, ood_loaders[ood], test_model)
@@ -235,8 +235,8 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             args.writer.add_scalar('train/4.train_loss_oem', losses_oem.avg, epoch)
             args.writer.add_scalar('train/5.train_loss_socr', losses_socr.avg, epoch)
             args.writer.add_scalar('train/5.train_loss_fix', losses_fix.avg, epoch)
-            args.writer.add_scalar('train/6.mask', mask_probs.avg, epoch)
-            args.writer.add_scalar('test/1.test_acc', test_acc_close, epoch)
+            args.writer.add_scalar('train/6.mask', mask_probs.avg, epoch)       # Fixmatch伪标签阈值上的概率
+            args.writer.add_scalar('test/1.test_acc', test_acc_close, epoch)    # 不考虑ova的输出的情况下，计算inlier的准确率
             args.writer.add_scalar('test/2.test_loss', test_loss, epoch)
 
             is_best = val_acc > best_acc_val
@@ -244,9 +244,9 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             if is_best:
                 overall_valid = test_overall
                 close_valid = test_acc_close
-                unk_valid = test_unk
-                roc_valid = test_roc
-                roc_softm_valid = test_roc_softm
+                unk_valid = test_unk                # outlier的二分类准确率
+                roc_valid = test_roc                # 判断是否是outlier的二分类roc
+                roc_softm_valid = test_roc_softm    # 不考虑ova输出，所有的预测inlier类别的概率值取负数，算outlier的roc
             model_to_save = model.module if hasattr(model, "module") else model
             if args.use_ema:
                 ema_to_save = ema_model.ema.module if hasattr(
@@ -259,7 +259,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 'acc close': test_acc_close,
                 'acc overall': test_overall,
                 'unk': test_unk,
-                'best_acc': best_acc,
+                'best_acc': best_acc,       # 全程没p用
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict(),
             }, is_best, args.out)
