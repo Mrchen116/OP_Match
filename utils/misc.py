@@ -269,7 +269,7 @@ def test(args, test_loader, model, epoch, val=False):
         roc_soft = compute_roc(-known_all, label_all,
                                num_known=int(outputs.size(1)))
         ind_known = np.where(label_all < int(outputs.size(1)))[0]
-        id_score = unk_all[ind_known]
+        id_score = unk_all[ind_known]                       # 所有inlier数据的ova中p(t=0)的输出
         logger.info("Closed acc: {:.3f}".format(top1.avg))
         logger.info("Overall acc: {:.3f}".format(acc.avg))
         logger.info("Unk acc: {:.3f}".format(unk.avg))
@@ -299,7 +299,7 @@ def test_ood(args, test_id, test_loader, model):
             out_open = F.softmax(outputs_open.view(outputs_open.size(0), 2, -1), 1)
             tmp_range = torch.range(0, out_open.size(0) - 1).long().cuda()
             pred_close = outputs.data.max(1)[1]
-            unk_score = out_open[tmp_range, 0, pred_close]
+            unk_score = out_open[tmp_range, 0, pred_close]      # ova的p(t=0)输出
             batch_time.update(time.time() - end)
             end = time.time()
             if batch_idx == 0:

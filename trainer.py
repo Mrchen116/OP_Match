@@ -238,6 +238,8 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             args.writer.add_scalar('train/6.mask', mask_probs.avg, epoch)       # Fixmatch伪标签阈值上的概率
             args.writer.add_scalar('test/1.test_acc', test_acc_close, epoch)    # 不考虑ova的输出的情况下，计算inlier的准确率
             args.writer.add_scalar('test/2.test_loss', test_loss, epoch)
+            args.writer.add_scalar('test/3.test_roc', test_roc, epoch)
+            args.writer.add_scalar('test/4.test_error_rate', 100 - test_acc_close, epoch)
 
             is_best = val_acc > best_acc_val
             best_acc_val = max(val_acc, best_acc_val)
