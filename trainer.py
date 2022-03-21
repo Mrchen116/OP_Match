@@ -144,7 +144,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
             ## Loss for labeled samples
             Lx = F.cross_entropy(logits[:2*b_size],
-                                      targets_x.repeat(2), reduction='mean')   # 有标签数据做CEloss 注意：targets包含<0的未知类标签
+                                      targets_x.repeat(2), reduction='mean')   # 有标签数据做CEloss 注意：labeled数据都来自已知类
             Lo = ova_loss(logits_open[:2*b_size], targets_x.repeat(2))
 
             ## Open-set entropy minimization
