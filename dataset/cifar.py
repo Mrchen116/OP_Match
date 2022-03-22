@@ -539,7 +539,7 @@ def get_ood(dataset, id, test_only=False, image_size=None):
         test_set = datasets.ImageFolder(test_dir, transform=test_transform)
 
     elif dataset == 'cub':
-        test_dir = os.path.join(DATA_PATH, 'cub')
+        test_dir = os.path.join(DATA_PATH, 'cub', 'images')
         test_set = datasets.ImageFolder(test_dir, transform=test_transform)
 
     elif dataset == 'flowers102':
