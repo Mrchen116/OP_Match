@@ -555,7 +555,7 @@ def get_ood(dataset, id, test_only=False, image_size=None):
         test_set = datasets.ImageFolder(test_dir, transform=test_transform)
 
     elif dataset == 'dtd':
-        test_dir = os.path.join(DATA_PATH, 'dtd')
+        test_dir = os.path.join(DATA_PATH, 'dtd', 'images')
         test_set = datasets.ImageFolder(test_dir, transform=test_transform)
 
     elif dataset == 'pets':
