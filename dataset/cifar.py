@@ -159,6 +159,15 @@ def get_imagenet(args, norm=True):
     return dataset_labeled, dataset_unlabeled, dataset_test, dataset_val
 
 
+def get_dtd(args, norm=True):
+    root = args.root
+    name = args.dataset
+    mean = normal_mean
+    std = normal_std
+    test_dir = os.path.join(root, name)
+    base_set = datasets.ImageFolder(test_dir, transform=test_transform)
+
+
 def x_u_split(args, labels):
     label_per_class = args.num_labeled #// args.num_classes
     val_per_class = args.num_val #// args.num_classes
@@ -247,18 +256,18 @@ class TransformOpenMatch(object):
 class TransformFixMatch_Imagenet(object):
     def __init__(self, mean, std, norm=True, size_image=224):
         self.weak = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
                                   padding_mode='reflect')])
         self.weak2 = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.CenterCrop(size=size_image),
         ])
         self.strong = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
@@ -283,18 +292,18 @@ class TransformFixMatch_Imagenet(object):
 class TransformFixMatch_Imagenet_Weak(object):
     def __init__(self, mean, std, norm=True, size_image=224):
         self.weak = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
                                   padding_mode='reflect')])
         self.weak2 = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.CenterCrop(size=size_image),
         ])      # 随机水平翻转 放大再中心裁剪
         self.strong = transforms.Compose([
-            transforms.Scale((256, 256)),
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
@@ -558,4 +567,5 @@ def get_ood(dataset, id, test_only=False, image_size=None):
 DATASET_GETTERS = {'cifar10': get_cifar,
                    'cifar100': get_cifar,
                    'imagenet': get_imagenet,
+                   'dtd': get_dtd,
                    }

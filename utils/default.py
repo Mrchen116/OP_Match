@@ -66,6 +66,9 @@ def set_model_config(args):
     elif args.dataset == "imagenet":
         args.num_classes = 20
 
+    elif args.dataset == "dtd":
+        args.num_classes = 27
+
     args.image_size = (32, 32, 3)
     if args.dataset == 'cifar10':
         args.ood_data = ["svhn", 'cifar100', 'lsun', 'imagenet']

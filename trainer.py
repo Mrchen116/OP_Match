@@ -66,7 +66,10 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
         mean = normal_mean
         std = normal_std
         func_trans = TransformFixMatch_Imagenet_Weak  # 翻转中心裁剪 翻转随机裁剪 翻转中心裁剪
-
+    else:
+        mean = normal_mean
+        std = normal_std
+        func_trans = TransformFixMatch_Imagenet_Weak
 
     unlabeled_dataset_all.transform = func_trans(mean=mean, std=std)   # unlabeled_dataset_all 比 unlabeled_dataset 增强弱一点
     labeled_dataset = copy.deepcopy(labeled_trainloader.dataset)
