@@ -40,9 +40,6 @@ def main():
     logger.info(dict(args._get_kwargs()))
     if args.seed is not None:
         set_seed(args)
-    if args.local_rank in [-1, 0]:
-        os.makedirs(args.out, exist_ok=True)
-        args.writer = SummaryWriter(args.out)
     set_model_config(args)      # 根据数据集，设置模型参数
 
     if args.local_rank not in [-1, 0]:
@@ -73,6 +70,9 @@ def main():
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
 
+    if args.local_rank in [-1, 0]:
+        os.makedirs(args.out, exist_ok=True)
+        args.writer = SummaryWriter(args.out)
     if args.amp:
         from apex import amp
         model, optimizer = amp.initialize(
