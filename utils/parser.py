@@ -89,7 +89,8 @@ def set_parser():
                         help='EMA decay rate')
     parser.add_argument('--T', default=1, type=float,
                         help='pseudo label temperature')
-
+    parser.add_argument("--no_ood", action="store_true",
+                        help="don't evaluate in ood dataset")
 
     args = parser.parse_args()
     return args

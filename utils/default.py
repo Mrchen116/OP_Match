@@ -81,6 +81,9 @@ def set_model_config(args):
                          'caltech_256', 'stanford_dogs']
         args.image_size = (224, 224, 3)
 
+    if args.no_ood:
+        args.ood_data = []
+
 def set_dataset(args):
     labeled_dataset, unlabeled_dataset, test_dataset, val_dataset = \
         DATASET_GETTERS[args.dataset](args)
