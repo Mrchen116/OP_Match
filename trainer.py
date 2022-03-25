@@ -82,7 +82,12 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
         num_workers=args.num_workers,
         drop_last=True)
     train_sampler = RandomSampler if args.local_rank == -1 else DistributedSampler
-
+    unlabeled_trainloader_all = DataLoader(unlabeled_dataset_all,
+                                           sampler=train_sampler(unlabeled_dataset_all),
+                                           batch_size=args.batch_size * args.mu,
+                                           num_workers=args.num_workers,
+                                           drop_last=True)
+    unlabeled_all_iter = iter(unlabeled_trainloader_all)
 
     for epoch in range(args.start_epoch, args.epochs):
         output_args["epoch"] = epoch
@@ -94,20 +99,14 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             ## pick pseudo-inliers
             exclude_dataset(args, unlabeled_dataset, ema_model.ema)     # 筛选出所有被ova认为是inlier的，其他不参与打伪标签
 
-        # 两者区别就是增强不同
-        unlabeled_trainloader = DataLoader(unlabeled_dataset,
-                                           sampler = train_sampler(unlabeled_dataset),
-                                           batch_size = args.batch_size * args.mu,
-                                           num_workers = args.num_workers,
-                                           drop_last = True)
-        unlabeled_trainloader_all = DataLoader(unlabeled_dataset_all,
-                                           sampler=train_sampler(unlabeled_dataset_all),
-                                           batch_size=args.batch_size * args.mu,
-                                           num_workers=args.num_workers,
-                                           drop_last=True)
+            # 有all和没all两者区别是增强不同，这个是用来做fix match pseudo label train
+            unlabeled_trainloader = DataLoader(unlabeled_dataset,
+                                               sampler = train_sampler(unlabeled_dataset),
+                                               batch_size = args.batch_size * args.mu,
+                                               num_workers = args.num_workers,
+                                               drop_last = True)
+            unlabeled_iter = iter(unlabeled_trainloader)
 
-        unlabeled_iter = iter(unlabeled_trainloader)
-        unlabeled_all_iter = iter(unlabeled_trainloader_all)
         # epoch 不是按照过一遍数据算，是按给定的eval_step
         for batch_idx in range(args.eval_step):
             ## Data loading
@@ -120,14 +119,15 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                     labeled_trainloader.sampler.set_epoch(labeled_epoch)
                 labeled_iter = iter(labeled_trainloader)
                 (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()
-            try:
-                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()          # 水平翻转随机裁剪 fixmatch强增强
-            except:
-                if args.world_size > 1:
-                    unlabeled_epoch += 1
-                    unlabeled_trainloader.sampler.set_epoch(unlabeled_epoch)
-                unlabeled_iter = iter(unlabeled_trainloader)
-                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
+            if epoch >= args.start_fix:
+                try:
+                    (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()          # 水平翻转随机裁剪 fixmatch强增强
+                except:
+                    if args.world_size > 1:
+                        unlabeled_epoch += 1
+                        unlabeled_trainloader.sampler.set_epoch(unlabeled_epoch)
+                    unlabeled_iter = iter(unlabeled_trainloader)
+                    (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
             try:
                 (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()  # 水平翻转随机裁剪 水平翻转随机裁剪
             except:
