@@ -92,7 +92,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
 
         if epoch >= args.start_fix:
             ## pick pseudo-inliers
-            exclude_dataset(args, unlabeled_dataset, ema_model.ema)
+            exclude_dataset(args, unlabeled_dataset, ema_model.ema)     # 筛选出所有被ova认为是inlier的，其他不参与打伪标签
 
         # 两者区别就是增强不同
         unlabeled_trainloader = DataLoader(unlabeled_dataset,

@@ -142,7 +142,7 @@ class AverageMeter(object):
 def exclude_dataset(args, dataset, model, exclude_known=False):
     data_time = AverageMeter()
     end = time.time()
-    dataset.init_index()
+    dataset.init_index()        # 初始化可迭代数据为所有数据
     test_loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -175,10 +175,10 @@ def exclude_dataset(args, dataset, model, exclude_known=False):
     if exclude_known:
         ind_selected = np.where(known_all == 0)[0]
     else:
-        ind_selected = np.where(known_all != 0)[0]
-    print("selected ratio %s"%( (len(ind_selected)/ len(known_all))))
+        ind_selected = np.where(known_all != 0)[0]      # 提取出所有ova判断为inlier的下标
+    print("selected ratio %s"%( (len(ind_selected)/ len(known_all))))   # 提取出来的比例
     model.train()
-    dataset.set_index(ind_selected)
+    dataset.set_index(ind_selected)     # 设置只可迭代这些数据
 
 def test(args, test_loader, model, epoch, val=False):
     batch_time = AverageMeter()
